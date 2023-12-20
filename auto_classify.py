@@ -6,15 +6,17 @@ import numpy.typing as npt
 import pickle
 import cv2
 import cv2.typing as cvt
+import sys
 
 
-NUM_TIME_TO_SAMPLE: int = 1
-CHOSEN_MODEL = "cnn"  # "cnn" or "hog" (cnn more accurate but slower)
+NUM_TIME_TO_UPSAMPLE: int = 1
+CHOSEN_MODEL = "hog"  # "cnn" or "hog" (cnn more accurate but slower)
+FREQUENT_FACE_THRESHOLD = 10
 
 
 def recognize(image_path: str):
     face_image = face_recognition.load_image_file(image_path)
-    face_locations = face_recognition.face_locations(face_image, NUM_TIME_TO_SAMPLE, CHOSEN_MODEL)
+    face_locations = face_recognition.face_locations(face_image, NUM_TIME_TO_UPSAMPLE, CHOSEN_MODEL)
     encodings = face_recognition.face_encodings(face_image, face_locations)
     num_face: int = len(encodings)  # type: ignore
     return encodings, num_face, face_locations
@@ -33,11 +35,16 @@ class ImgFace:
 
 
 def main():
-    UNKNOWN_DIR_NAME = "example-unknowns"
+    UNKNOWN_DIR_NAME = sys.argv[1]
+    if not os.path.exists(UNKNOWN_DIR_NAME):
+        print(f"ERROR: {UNKNOWN_DIR_NAME} not exist")
+        return
+
     cache_encoding_dict: dict[str, list[ImgFace]] = {}
-    no_face_imgs = []
-    single_face_imgs = []
-    multi_face_imgs = []
+    no_face_imgs: list[str] = []
+    single_face_imgs: list[str] = []
+    multi_face_imgs: list[str] = []
+    frequent_face_class_keys: list[str] = []
 
     # ============== Loop all imgs from unknown folder ==============
     for img_name in tqdm(os.listdir(UNKNOWN_DIR_NAME)):
@@ -86,12 +93,13 @@ def main():
             print(i, [item.img_path for item in curr_dict])
             print("===============")
 
-
     # ============================= Post-process =============================
     # ============== Crop image with class ==============
     for key, value in cache_encoding_dict.items():
-        if not len(value) > 1:
+        if not len(value) > FREQUENT_FACE_THRESHOLD:
             continue
+
+        frequent_face_class_keys.append(f"{key}:{len(value)}")
 
         dir_path = f"out/{key}"
         if not os.path.exists(dir_path):
@@ -117,16 +125,17 @@ def main():
             cv2.imwrite(new_file_path, face_img)
 
             print(f"Cropped image saved: {new_file_path}")
-            
-    
-    # save no,single,multi face imgs 
+
+    # save no,single,multi face imgs
     with open("out/no-face.txt", "w+") as fp:
         fp.write("\n".join(no_face_imgs))
     with open("out/single-face.txt", "w+") as fp:
         fp.write("\n".join(single_face_imgs))
     with open("out/multi-face.txt", "w+") as fp:
         fp.write("\n".join(multi_face_imgs))
+    with open("out/frequent-face-class-keys.txt", "w+") as fp:
+        fp.write("\n".join(frequent_face_class_keys))
+
 
 if __name__ == "__main__":
     main()
-    # data: dict[str, list[ImgFace]] = pickle.load(open("out/encoding-dict.pkl", "rb"))
