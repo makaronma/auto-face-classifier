@@ -9,7 +9,8 @@ import cv2.typing as cvt
 
 
 NUM_TIME_TO_SAMPLE: int = 1
-CHOSEN_MODEL = "cnn" # "cnn" or "hog" (cnn more accurate but slower)
+CHOSEN_MODEL = "cnn"  # "cnn" or "hog" (cnn more accurate but slower)
+
 
 def recognize(image_path: str):
     face_image = face_recognition.load_image_file(image_path)
@@ -32,9 +33,11 @@ class ImgFace:
 
 
 def main():
-    UNKNOWN_DIR_NAME = "./all-unknown"
+    UNKNOWN_DIR_NAME = "all-unknown"
     cache_encoding_dict: dict[str, list[ImgFace]] = {}
     no_face_imgs = []
+    single_face_imgs = []
+    multi_face_imgs = []
 
     # ============== Loop all imgs from unknown folder ==============
     for img_name in tqdm(os.listdir(UNKNOWN_DIR_NAME)):
@@ -45,6 +48,11 @@ def main():
         if not (num_face >= 1):
             no_face_imgs.append(image_path)
             continue
+
+        if num_face == 1:
+            single_face_imgs.append(image_path)
+        if num_face > 1:
+            multi_face_imgs.append(image_path)
 
         # any face detected
         # Loop all faces in one image
@@ -78,6 +86,8 @@ def main():
             print(i, [item.img_path for item in curr_dict])
             print("===============")
 
+
+    # ============================= Post-process =============================
     # ============== Crop image with class ==============
     for key, value in cache_encoding_dict.items():
         if not len(value) > 1:
@@ -102,12 +112,20 @@ def main():
 
             # Copy cropped image to a new file
             # create folder if not exist
-            
+
             new_file_path = f"{dir_path}/cropped_class-{key}_{box_i}-{box_data.img_name}"
             cv2.imwrite(new_file_path, face_img)
 
             print(f"Cropped image saved: {new_file_path}")
-
+            
+    
+    # save no,single,multi face imgs 
+    with open("out/no-face.txt", "w+") as fp:
+        fp.write("\n".join(no_face_imgs))
+    with open("out/single-face.txt", "w+") as fp:
+        fp.write("\n".join(single_face_imgs))
+    with open("out/multi-face.txt", "w+") as fp:
+        fp.write("\n".join(multi_face_imgs))
 
 if __name__ == "__main__":
     main()
