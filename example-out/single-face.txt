@@ -1,5 +1,0 @@
-example-unknowns/bill-gates-1-8.jpg
-example-unknowns/bill-gates-1-9.jpg
-example-unknowns/bill-gates-3-58.jpg
-example-unknowns/bill-gates-1-0.jpg
-example-unknowns/bill-gates-1-7.jpg
