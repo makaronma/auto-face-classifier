@@ -33,7 +33,7 @@ class ImgFace:
 
 
 def main():
-    UNKNOWN_DIR_NAME = "all-unknown"
+    UNKNOWN_DIR_NAME = "example-unknowns"
     cache_encoding_dict: dict[str, list[ImgFace]] = {}
     no_face_imgs = []
     single_face_imgs = []

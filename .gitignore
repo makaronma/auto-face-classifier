@@ -3,3 +3,4 @@ all-unknown
 all-classified
 out
 .DS_Store
+__pycache__
