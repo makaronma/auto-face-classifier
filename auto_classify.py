@@ -6,11 +6,12 @@ import numpy.typing as npt
 import pickle
 import cv2
 import cv2.typing as cvt
-import sys
 
 
-NUM_TIME_TO_UPSAMPLE: int = 1
-CHOSEN_MODEL = "hog"  # "cnn" or "hog" (cnn more accurate but slower)
+UNKNOWN_DIR_NAME = "all-unknown"
+
+NUM_TIME_TO_UPSAMPLE: int = 2
+CHOSEN_MODEL = "cnn"  # "cnn" or "hog" (cnn more accurate but slower)
 FREQUENT_FACE_THRESHOLD = 10
 
 
@@ -30,15 +31,7 @@ class ImgFace:
         self.face_location = face_location
 
 
-# TODO: get boundbox of face in encoding
-# TODO: label num_face
-
-
 def main():
-    UNKNOWN_DIR_NAME = sys.argv[1]
-    if not os.path.exists(UNKNOWN_DIR_NAME):
-        print(f"ERROR: {UNKNOWN_DIR_NAME} not exist")
-        return
 
     cache_encoding_dict: dict[str, list[ImgFace]] = {}
     no_face_imgs: list[str] = []
