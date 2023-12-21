@@ -10,9 +10,9 @@ import cv2.typing as cvt
 
 UNKNOWN_DIR_NAME = "all-unknown"
 
-NUM_TIME_TO_UPSAMPLE: int = 2
-CHOSEN_MODEL = "cnn"  # "cnn" or "hog" (cnn more accurate but slower)
-FREQUENT_FACE_THRESHOLD = 10
+NUM_TIME_TO_UPSAMPLE: int = 1
+CHOSEN_MODEL = "hog"  # "cnn" or "hog" (cnn more accurate but slower)
+FREQUENT_FACE_THRESHOLD = 20
 
 
 def recognize(image_path: str):
@@ -32,12 +32,13 @@ class ImgFace:
 
 
 def main():
-
     cache_encoding_dict: dict[str, list[ImgFace]] = {}
+
+    # Store Result
     no_face_imgs: list[str] = []
     single_face_imgs: list[str] = []
     multi_face_imgs: list[str] = []
-    frequent_face_class_keys: list[str] = []
+    frequent_face_classes: dict[str, list[str]] = {}
 
     # ============== Loop all imgs from unknown folder ==============
     for img_name in tqdm(os.listdir(UNKNOWN_DIR_NAME)):
@@ -74,9 +75,6 @@ def main():
             if any_matched == False:
                 cache_encoding_dict[str(len(cache_encoding_dict))] = [currImgFace]
 
-    with open("out/encoding-dict.pkl", "wb+") as fp:
-        pickle.dump(cache_encoding_dict, fp)
-        print(f"Saved encoding dictionary: out/encoding-dict.pkl")
 
     print("Classes:")
     for i in range(len(cache_encoding_dict)):
@@ -92,7 +90,7 @@ def main():
         if not len(value) > FREQUENT_FACE_THRESHOLD:
             continue
 
-        frequent_face_class_keys.append(f"{key}:{len(value)}")
+        frequent_face_classes[key] = [v.img_path for v in value]
 
         dir_path = f"out/{key}"
         if not os.path.exists(dir_path):
@@ -119,15 +117,31 @@ def main():
 
             print(f"Cropped image saved: {new_file_path}")
 
-    # save no,single,multi face imgs
-    with open("out/no-face.txt", "w+") as fp:
-        fp.write("\n".join(no_face_imgs))
-    with open("out/single-face.txt", "w+") as fp:
-        fp.write("\n".join(single_face_imgs))
-    with open("out/multi-face.txt", "w+") as fp:
-        fp.write("\n".join(multi_face_imgs))
-    with open("out/frequent-face-class-keys.txt", "w+") as fp:
-        fp.write("\n".join(frequent_face_class_keys))
+
+    # Save Face Class Encodings
+    with open("out/encoding-dict.pkl", "wb+") as fp:
+        pickle.dump(cache_encoding_dict, fp)
+        print(f"Saved encoding dictionary: out/encoding-dict.pkl")
+
+
+    if not os.path.exists("out/results"):
+            os.makedirs("out/results")
+    # Save All Result
+    with open("out/results/no-face.pkl", "wb") as fp:
+        pickle.dump(no_face_imgs, fp)
+        print(f"Saved no face images: out/results/no-face.pkl")
+
+    with open("out/results/single-face.pkl", "wb") as fp:
+        pickle.dump(single_face_imgs, fp)
+        print(f"Saved single face images: out/results/single-face.pkl")
+        
+    with open("out/results/multi-face.pkl", "wb") as fp:
+        pickle.dump(multi_face_imgs, fp)
+        print(f"Saved multi face images: out/results/multi-face.pkl")
+        
+    with open('out/results/frequent-face-classes.pkl','wb') as fp:
+        pickle.dump(frequent_face_classes, fp)
+        print(f"Saved frequent face classes: out/results/frequent-face-classes.pkl")
 
 
 if __name__ == "__main__":
