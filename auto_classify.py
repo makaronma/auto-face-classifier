@@ -6,12 +6,14 @@ import numpy.typing as npt
 import pickle
 import cv2
 import cv2.typing as cvt
+from deepface import DeepFace
+import numpy as np
 
 
 UNKNOWN_DIR_NAME = "all-unknown"
 
-NUM_TIME_TO_UPSAMPLE: int = 1
-CHOSEN_MODEL = "hog"  # "cnn" or "hog" (cnn more accurate but slower)
+NUM_TIME_TO_UPSAMPLE: int = 2
+CHOSEN_MODEL = "cnn"  # "cnn" or "hog" (cnn more accurate but slower)
 FREQUENT_FACE_THRESHOLD = 20
 
 
@@ -21,6 +23,20 @@ def recognize(image_path: str):
     encodings = face_recognition.face_encodings(face_image, face_locations)
     num_face: int = len(encodings)  # type: ignore
     return encodings, num_face, face_locations
+
+
+def get_average_emotion_name(img_path: str) -> str | None:
+    try:
+        result = DeepFace.analyze(img_path, actions=["emotion"])
+
+        average_emotion: dict[str, float] = {}
+        emotion_types = ["angry", "disgust", "fear", "happy", "sad", "surprise", "neutral"]
+        for emo in emotion_types:
+            average_emotion[emo] = np.average([obj["emotion"][emo] for obj in result])  # type: ignore
+        average_emotion_name: str = max(average_emotion, key=average_emotion.get)  # type: ignore
+        return average_emotion_name
+    except:
+        return None
 
 
 class ImgFace:
@@ -39,6 +55,15 @@ def main():
     single_face_imgs: list[str] = []
     multi_face_imgs: list[str] = []
     frequent_face_classes: dict[str, list[str]] = {}
+    emotions_dict: dict[str, list[str]] = {
+        "angry": [],
+        "disgust": [],
+        "fear": [],
+        "happy": [],
+        "sad": [],
+        "surprise": [],
+        "neutral": [],
+    }
 
     # ============== Loop all imgs from unknown folder ==============
     for img_name in tqdm(os.listdir(UNKNOWN_DIR_NAME)):
@@ -54,6 +79,10 @@ def main():
             single_face_imgs.append(image_path)
         if num_face > 1:
             multi_face_imgs.append(image_path)
+
+        emotion_name = get_average_emotion_name(image_path)
+        if emotion_name is not None:
+            emotions_dict[emotion_name].append(image_path)
 
         # any face detected
         # Loop all faces in one image
@@ -74,7 +103,6 @@ def main():
             # Condition3: no match any in dict, then create one new category
             if any_matched == False:
                 cache_encoding_dict[str(len(cache_encoding_dict))] = [currImgFace]
-
 
     print("Classes:")
     for i in range(len(cache_encoding_dict)):
@@ -117,15 +145,13 @@ def main():
 
             print(f"Cropped image saved: {new_file_path}")
 
-
     # Save Face Class Encodings
     with open("out/encoding-dict.pkl", "wb+") as fp:
         pickle.dump(cache_encoding_dict, fp)
         print(f"Saved encoding dictionary: out/encoding-dict.pkl")
 
-
     if not os.path.exists("out/results"):
-            os.makedirs("out/results")
+        os.makedirs("out/results")
     # Save All Result
     with open("out/results/no-face.pkl", "wb") as fp:
         pickle.dump(no_face_imgs, fp)
@@ -134,14 +160,18 @@ def main():
     with open("out/results/single-face.pkl", "wb") as fp:
         pickle.dump(single_face_imgs, fp)
         print(f"Saved single face images: out/results/single-face.pkl")
-        
+
     with open("out/results/multi-face.pkl", "wb") as fp:
         pickle.dump(multi_face_imgs, fp)
         print(f"Saved multi face images: out/results/multi-face.pkl")
-        
-    with open('out/results/frequent-face-classes.pkl','wb') as fp:
+
+    with open("out/results/frequent-face-classes.pkl", "wb") as fp:
         pickle.dump(frequent_face_classes, fp)
         print(f"Saved frequent face classes: out/results/frequent-face-classes.pkl")
+
+    with open("out/results/emotions-dict.pkl", "wb") as fp:
+        pickle.dump(emotions_dict, fp)
+        print(f"Saved frequent face classes: out/results/emotions-dict.pkl")
 
 
 if __name__ == "__main__":
